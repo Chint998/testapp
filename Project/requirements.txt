@@ -1,6 +1,5 @@
 setuptools>=70.0.0
 wheel
-distutils
 Flask==2.0.1
 azure-cosmos==4.2.0
 azure-storage-blob==12.8.1
