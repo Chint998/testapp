@@ -30,7 +30,7 @@ jobs:
       - name: Upgrade pip, setuptools, wheel, and install distutils
         run: |
           source venv/bin/activate
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel setuptools-scm
           sudo apt-get update
           sudo apt-get install -y python3-distutils
 
