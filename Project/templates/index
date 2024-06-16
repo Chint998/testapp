@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Management</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    h1 {
+      text-align: center;
+      color: #0078D4;
+    }
+    .btn {
+      background-color: #0078D4;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      margin: 5px;
+    }
+    .btn:hover {
+      background-color: #005A9E;
+    }
+    .hidden {
+      display: none;
+    }
+    .form-container,
+    .view-container {
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background-color: #0078D4;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Employee Management</h1>
+    <div>
+      <button class="btn" onclick="showForm()">Add Employee</button>
+      <button class="btn" onclick="showList()">View Employees</button>
+      <a class="btn" href="/download_employees"><i class="fas fa-download"></i> Download Employees (Excel)</a>
+    </div>
+
+    <div id="form-container" class="form-container hidden">
+      <h2>Enter Employee Details</h2>
+      <form action="/submit" method="post" enctype="multipart/form-data">
+        <label for="employeeId">Employee ID:</label><br>
+        <input type="text" id="employeeId" name="employeeId" required><br>
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name" required><br>
+        <label for="dob">Date of Birth:</label><br>
+        <input type="date" id="dob" name="dob" required><br>
+        <label for="photo">Photo:</label><br>
+        <input type="file" id="photo" name="photo" accept="image/*" required><br>
+        <label for="document">Document:</label><br>
+        <input type="file" id="document" name="document" required><br><br>
+        <button type="submit" class="btn">Submit</button>
+      </form>
+    </div>
+
+    <div id="view-container" class="view-container hidden">
+      <h2>Employee Details</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Date of Birth</th>
+            <th>Photo</th>
+            <th>Document</th>
+          </tr>
+        </thead>
+        <tbody id="employee-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function showForm() {
+      document.getElementById('form-container').classList.remove('hidden');
+      document.getElementById('view-container').classList.add('hidden');
+    }
+
+    function showList() {
+      document.getElementById('form-container').classList.add('hidden');
+      document.getElementById('view-container').classList.remove('hidden');
+      fetchEmployees();
+    }
+
+    function fetchEmployees() {
+      fetch('/get_employees')
+        .then(response => response.json())
+        .then(data => {
+          const tableBody = document.getElementById('employee-table-body');
+          tableBody.innerHTML = ''; // Clear existing data
+          data.forEach(employee => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${employee.employeeId}</td>
+              <td>${employee.name}</td>
+              <td>${employee.dob}</td>
+              <td><a href="/download/${encodeURIComponent(employee.photo_url)}">Download Photo</a></td>
+              <td><a href="/download/${encodeURIComponent(employee.document_url)}">Download Document</a></td>
+            `;
+            tableBody.appendChild(row);
+          });
+        });
+    }
+  </script>
+</body>
+</html>
