@@ -20,23 +20,25 @@ jobs:
       - name: Set up Python version
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Create and start virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
 
-      - name: Upgrade pip, setuptools, and wheel
+      - name: Upgrade pip, setuptools, wheel, and install distutils
         run: |
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
+          sudo apt-get update
+          sudo apt-get install -y python3-distutils
 
       - name: Install dependencies
         run: |
           source venv/bin/activate
           pip install -r Project/requirements.txt
-        
+
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
       - name: Zip artifact for deployment
