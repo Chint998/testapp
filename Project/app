@@ -1,0 +1,109 @@
+from flask import Flask, request, render_template, redirect, url_for, jsonify, send_file
+from azure.cosmos import CosmosClient, PartitionKey
+from azure.storage.blob import BlobServiceClient
+from werkzeug.utils import secure_filename
+import pandas as pd  # Import Pandas for creating Excel file
+import requests
+import io
+
+app = Flask(__name__)
+
+# Azure Cosmos DB configuration
+endpoint = "https://cosmosdb19.documents.azure.com:443/"
+key = '0DE8WXVNTlNCyyBoriVUd6BOzL20KT7ywQrbrXiEnCE8BRiZ3RdJOVhuR8AXQQ8Bo7I1FiljpejeACDbnZvc2Q=='
+database_name = 'studentdb'
+container_name = 'employees'
+
+# Initialize the Cosmos client
+client = CosmosClient(endpoint, key)
+database = client.create_database_if_not_exists(id=database_name)
+container = database.create_container_if_not_exists(
+    id=container_name,
+    partition_key=PartitionKey(path='/employeeId'),
+    offer_throughput=400
+)
+
+# Azure Blob Storage configuration
+blob_service_client = BlobServiceClient.from_connection_string('DefaultEndpointsProtocol=https;AccountName=new11234;AccountKey=7xEUSdBqnwxMZwBgtKm1Dhfdi01aSwU1qyOvQvfZEqzTq3Q4z3eYkivuuKRa7WseN67tYe3dvRRF+AStxwCypQ==;EndpointSuffix=core.windows.net')
+photos_container_client = blob_service_client.get_container_client('photos')
+documents_container_client = blob_service_client.get_container_client('documents')
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/submit', methods=['POST'])
+def submit():
+    employee_id = request.form['employeeId']
+    name = request.form['name']
+    dob = request.form['dob']
+    photo = request.files['photo']
+    document = request.files['document']
+
+    # Secure filenames
+    photo_filename = secure_filename(photo.filename)
+    document_filename = secure_filename(document.filename)
+
+    # Upload photo to Azure Blob Storage
+    photo_blob_client = photos_container_client.get_blob_client(photo_filename)
+    photo_blob_client.upload_blob(photo, overwrite=True)
+
+    # Upload document to Azure Blob Storage
+    document_blob_client = documents_container_client.get_blob_client(document_filename)
+    document_blob_client.upload_blob(document, overwrite=True)
+
+    # Create item to store in Cosmos DB
+    item = {
+        'id': employee_id,
+        'employeeId': employee_id,
+        'name': name,
+        'dob': dob,
+        'photo_url': photo_blob_client.url,
+        'document_url': document_blob_client.url
+    }
+
+    container.create_item(body=item)
+
+    return redirect(url_for('index'))
+
+@app.route('/get_employees', methods=['GET'])
+def get_employees():
+    items = list(container.read_all_items())
+    return jsonify(items)
+
+@app.route('/download/<path:url>', methods=['GET'])
+def download(url):
+    r = requests.get(url, stream=True)
+    filename = url.split('/')[-1]
+    response = send_file(
+        r.raw,
+        as_attachment=True,
+        download_name=filename,
+        mimetype=r.headers.get('content-type')
+    )
+    return response
+
+@app.route('/download_employees', methods=['GET'])
+def download_employees():
+    items = list(container.read_all_items())
+
+    # Create a DataFrame from employee data
+    df = pd.DataFrame(items)
+
+    # Create an in-memory Excel file
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False)
+    writer.save()
+    output.seek(0)
+
+    # Return the Excel file as a response
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name='employees.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+if __name__ == '__main__':
+    app.run(debug=True)
